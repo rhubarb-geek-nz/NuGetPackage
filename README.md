@@ -6,12 +6,12 @@ This was inspired by [Unable to install PowerShell Module from GitHub NuGet repo
 
 ## Summary
 
-The parameters are modelled on [Find-Module](https://learn.microsoft.com/en-us/powershell/module/powershellget/find-module) and [Save-Module](https://learn.microsoft.com/en-us/powershell/module/powershellget/save-module).
+The parameters are modelled on [Find-Package](https://learn.microsoft.com/en-us/powershell/module/packagemanagement/find-package) and [Save-Package](https://learn.microsoft.com/en-us/powershell/module/packagemanagement/save-package).
 
 ```
-Find-NuGetPackage -Repository <string> [-Name <string>] [-Credential <pscredential>] [-Filter <string>] [-RequiredVersion <string>] [-AllVersions]
+Find-NuGetPackage -Source <string> [-Name <string>] [-Credential <pscredential>] [-Filter <string>] [-RequiredVersion <string>] [-AllVersions]
 
-Save-NuGetPackage -Repository <string> -Name <string> [-Credential <pscredential>] [-Filter <string>] [-RequiredVersion <string>] [-Path <string>]
+Save-NuGetPackage -Source <string> -Name <string> [-Credential <pscredential>] [-Filter <string>] [-RequiredVersion <string>] [-Path <string>]
 ```
 
 ## Example
@@ -19,13 +19,13 @@ Save-NuGetPackage -Repository <string> -Name <string> [-Credential <pscredential
 The following example downloads a `nupkg` from a `github` repository.
 
 ```
-PS> Find-NuGetPackage -Repository github -name rhubarb-geek-nz.SQLiteConnection
+PS> Find-NuGetPackage -Source github -name rhubarb-geek-nz.SQLiteConnection
 
-Version Name                             Repository Description
-------- ----                             ---------- -----------
-1.0.118 rhubarb-geek-nz.SQLiteConnection github     SQLite Connection Tool
+Version Name                             Source Description
+------- ----                             ------ -----------
+1.0.118 rhubarb-geek-nz.SQLiteConnection github SQLite Connection Tool
 
-PS> Save-NuGetPackage -Repository github -name rhubarb-geek-nz.SQLiteConnection -Verbose
+PS> Save-NuGetPackage -Source github -name rhubarb-geek-nz.SQLiteConnection -Verbose
 VERBOSE: GET https://nuget.pkg.github.com/rhubarb-geek-nz/index.json
 VERBOSE: Requested HTTP/1.1 GET with 0-byte payload
 VERBOSE: Received HTTP/1.1 0-byte response of content type
@@ -48,4 +48,4 @@ VERBOSE: File Name: rhubarb-geek-nz.SQLiteConnection.1.0.118.nupkg
 
 ## Notes
 
-The `Filter` argument is used as the `NuGet` query `q` argument so will be required when dealing with repositories of more than 20 packages. The tool does not dowmload multple pages of results. The repository definitions come from the user's `NuGet.Config` file. No attempt is made to deal with proxies.
+The `Filter` argument is used as the `NuGet` query `q` argument so will be required when dealing with repositories of more than 20 or so packages. The tool does not dowmload multple pages of results. The repository definitions come from the user's `NuGet.Config` file. No attempt is made to deal with proxies.

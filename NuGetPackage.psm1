@@ -6,7 +6,7 @@ function NuGetPackage
 	[CmdletBinding(PositionalBinding=$False)]
 
 	Param(
-		[Parameter(Mandatory=$True)][string]$Repository,
+		[Parameter(Mandatory=$True)][string]$Source,
 		[PSCredential]$Credential,
 		[string]$Filter,
 		[string]$Name,
@@ -17,8 +17,6 @@ function NuGetPackage
 
 	Process
 	{
-		$ErrorActionPreference = 'Stop'
-
 		if ($PSVersionTable.PSEdition -eq 'Desktop')
 		{
 			$IsWindows = $True
@@ -47,42 +45,42 @@ function NuGetPackage
 
 		if (-not $NuGetConfig)
 		{
-			throw "NuGet.Config not found"
+			Write-Error "NuGet.Config not found"
 		}
 
-		$PackageSource = (Select-Xml -Xml $NuGetConfig -XPath "/configuration/packageSources/add[@key='$Repository']").Node
+		$PackageSource = (Select-Xml -Xml $NuGetConfig -XPath "/configuration/packageSources/add[@key='$Source']").Node
 
 		if (-not $PackageSource)
 		{
-			throw "NuGet source $Repository not found"
+			Write-Error "NuGet source $Source not found"
 		}
 
 		$PackageSourceUrl = $PackageSource.value
 
 		if (-not $PackageSourceUrl)
 		{
-			throw "No Source URL for $Repository"
+			Write-Error "No Source URL for $Source"
 		}
 
 		$args = @{
 			Uri = $PackageSourceUrl
 		}
 
-		$RepositoryUri = New-Object -TypeName 'System.Uri' -ArgumentList $PackageSourceUrl
+		$SourceUri = New-Object -TypeName 'System.Uri' -ArgumentList $PackageSourceUrl
 
-		$BaseName = "$Name.$RequiredVersion.nupkg"
+		$PackageFilename = "$Name.$RequiredVersion.nupkg"
 
-		if ($RepositoryUri.IsFile)
+		if ($SourceUri.IsFile)
 		{
-			$FilePath = Join-Path -Path $RepositoryUri.LocalPath -ChildPath $BaseName
+			$FilePath = Join-Path -Path $SourceUri.LocalPath -ChildPath $PackageFilename
 
 			if (Test-Path -LiteralPath $FilePath)
 			{
-				$PackageContent = "$PackageSourceUrl/$BaseName"
+				$PackageContent = "$PackageSourceUrl/$PackageFilename"
 			}
 			else
 			{
-				throw "$FilePath not found"
+				Write-Error "$FilePath not found"
 			}
 		}
 		else
@@ -107,8 +105,8 @@ function NuGetPackage
 					switch ($Response.StatusCode.Value__)
 					{
 						401 {
-							$UserName = (Select-Xml -Xml $NuGetConfig -XPath "/configuration/packageSourceCredentials/$Repository/add[@key='Username']").Node
-							$Password = (Select-Xml -Xml $NuGetConfig -XPath "/configuration/packageSourceCredentials/$Repository/add[@key='ClearTextPassword']").Node
+							$UserName = (Select-Xml -Xml $NuGetConfig -XPath "/configuration/packageSourceCredentials/$Source/add[@key='Username']").Node
+							$Password = (Select-Xml -Xml $NuGetConfig -XPath "/configuration/packageSourceCredentials/$Source/add[@key='ClearTextPassword']").Node
 
 							if ($UserName -and $Password)
 							{
@@ -118,7 +116,7 @@ function NuGetPackage
 							}
 							else
 							{
-								$Message = "Provide credentials for NuGet source '$Repository'"
+								$Message = "Provide credentials for NuGet source '$Source'"
 
 								$WWWAuthenticate = $Response.Headers | Where-Object { $_.Key -eq 'WWW-Authenticate' } | ForEach-Object { $_.Value }
 
@@ -145,23 +143,23 @@ function NuGetPackage
 								}
 								catch
 								{
-									throw $PSItem
+									Write-Error $PSItem
 								}
 							}
 							else
 							{
-								throw "No credentials for $Repository found"
+								Write-Error "No credentials for $Source found"
 							}
 						}
 
 						default {
-							throw $PSItem
+							Write-Error $PSItem
 						}
 					}
 				}
 				else
 				{
-					throw $PSItem
+					Write-Error $PSItem
 				}
 			}
 
@@ -191,7 +189,7 @@ function NuGetPackage
 
 			if (-not $SearchQueryService)
 			{
-				throw "SearchQueryService not found"
+				Write-Error "SearchQueryService not found"
 			}
 
 			$args['Uri'] = $SearchQueryService
@@ -238,15 +236,15 @@ function NuGetPackage
 
 									$PackageContent = $VersionInfo.packageContent
 
-									$BaseName = "$($Data.id).$($Version.version).nupkg"
+									$PackageFilename = "$($Data.id).$($Version.version).nupkg"
 
 									[pscustomobject]@{
 										Version = $Version.version
 										Name = $Data.id
-										Repository = $Repository
+										Source = $Source
 										Description = $Data.description
 										PackageContent = $PackageContent
-										BaseName = $BaseName
+										PackageFilename = $PackageFilename
 										Credential = $Credential
 									}
 								}
@@ -255,7 +253,7 @@ function NuGetPackage
 									[pscustomobject]@{
 										Version = $Version.version
 										Name = $Data.id
-										Repository = $Repository
+										Source = $Source
 										Description = $Data.description
 									}
 								}
@@ -271,7 +269,7 @@ function NuGetPackage
 								[pscustomobject]@{
 									Version = $Version.version
 									Name = $Data.id
-									Repository = $Repository
+									Source = $Source
 									Description = $Data.description
 								}
 							}
@@ -281,7 +279,7 @@ function NuGetPackage
 							[pscustomobject]@{
 								Version = $Data.version
 								Name = $Data.id
-								Repository = $Repository
+								Source = $Source
 								Description = $Data.description
 							}
 						}
@@ -297,7 +295,7 @@ function Find-NuGetPackage
 	[CmdletBinding(PositionalBinding=$False)]
 
 	Param(
-		[Parameter(Mandatory=$True)][string]$Repository,
+		[Parameter(Mandatory=$True)][string]$Source,
 		[string]$Name,
 		[PSCredential]$Credential,
 		[string]$Filter,
@@ -308,7 +306,7 @@ function Find-NuGetPackage
 	Process
 	{
 		$args = @{
-			Repository = $Repository
+			Source = $Source
 		}
 
 		foreach ($Nvp in ('Name',$Name),('Credential',$Credential),('RequiredVersion',$RequiredVersion),('Filter',$Filter))
@@ -324,12 +322,18 @@ function Find-NuGetPackage
 			$args['AllVersions'] = $AllVersions
 		}
 
+		$ErrorActionOriginal = $ErrorActionPreference
+
 		try
 		{
+			$ErrorActionPreference = 'Stop'
+
 			NuGetPackage @args
 		}
 		catch
 		{
+			$ErrorActionPreference = $ErrorActionOriginal
+
 			Write-Error $PSItem
 		}
 	}
@@ -340,18 +344,19 @@ function Save-NuGetPackage
 	[CmdletBinding(PositionalBinding=$False)]
 
 	Param(
-		[Parameter(Mandatory=$True)][string]$Repository,
+		[Parameter(Mandatory=$True)][string]$Source,
 		[Parameter(Mandatory=$True)][string]$Name,
 		[PSCredential]$Credential,
 		[string]$Filter,
 		[string]$RequiredVersion,
-		[string]$Path
+		[string]$Path,
+		[string]$LiteralPath
 	)
 
 	Process
 	{
 		$args = @{
-			Repository = $Repository
+			Source = $Source
 			Name = $Name
 			SaveVerb = $True
 		}
@@ -364,26 +369,47 @@ function Save-NuGetPackage
 			}
 		}
 
+		$ErrorActionOriginal = $ErrorActionPreference
+
 		try
 		{
-			if ($Path -and -not ( Test-Path -LiteralPath $Path -PathType Container ))
+			$ErrorActionPreference = 'Stop'
+
+			if ($Path -and $LiteralPath)
 			{
-				throw "$Path not found"
+				Write-Error "Can't provide both Path and LiteralPath"
+			}
+
+			if ($Path)
+			{
+				$ResolvedPath = Resolve-Path -Path $Path
+
+				if ($ResolvedPath.Count -ne 1)
+				{
+					Write-Error "Path '$Path' was ambiguous"
+				}
+
+				$LiteralPath = $ResolvedPath
+			}
+
+			if ($LiteralPath -and -not ( Test-Path -LiteralPath $LiteralPath -PathType Container ))
+			{
+				Write-Error "Directory '$LiteralPath' not found"
 			}
 
 			$Results = New-Object -TypeName 'System.Collections.ArrayList'
 
 			NuGetPackage @args | ForEach-Object {
 				$Uri = $_.PackageContent
-				$BaseName = $_.BaseName
+				$PackageFilename = $_.PackageFilename
 
-				if ($Path)
+				if ($LiteralPath)
 				{
-					$OutFile = Join-Path -Path $Path -ChildPath $BaseName
+					$OutFile = Join-Path -Path $LiteralPath -ChildPath $PackageFilename
 				}
 				else
 				{
-					$OutFile = $BaseName
+					$OutFile = $PackageFilename
 				}
 
 				$args = @{
@@ -400,7 +426,7 @@ function Save-NuGetPackage
 
 				Invoke-WebRequest @args
 
-				$Results += $BaseName
+				$Results += $PackageFilename
 			}
 
 			if (-not $Results)
@@ -410,6 +436,8 @@ function Save-NuGetPackage
 		}
 		catch
 		{
+			$ErrorActionPreference = $ErrorActionOriginal
+
 			Write-Error $PSItem
 		}
 	}

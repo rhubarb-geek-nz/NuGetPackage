@@ -1,6 +1,6 @@
 ﻿@{
 	RootModule = 'NuGetPackage.psm1'
-	ModuleVersion = '1.0.0'
+	ModuleVersion = '1.0.1'
 	GUID = '008e368c-1047-4f30-a7b9-aff2b2f2fd1d'
 	Author = 'Roger Brown'
 	CompanyName = 'rhubarb-geek-nz'
