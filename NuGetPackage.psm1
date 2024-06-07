@@ -205,8 +205,6 @@ function NuGetPackage
 
 			$QueryResult = Invoke-RestMethod @args
 
-			$args.Remove('Body')
-
 			$VersionInfo = $Null
 			$PackageContent = $Null
 
@@ -228,7 +226,15 @@ function NuGetPackage
 								if ($SaveVerb)
 								{
 									$Uri = $Version.'@id'
-									$args['Uri'] = $Uri
+
+									$args = @{
+										Uri =$Uri
+									}
+
+									if ($Credential)
+									{
+										$args['Credential'] = $Credential
+									}
 
 									Write-Verbose "GET $Uri"
 
